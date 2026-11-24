@@ -1,0 +1,34 @@
+<?php
+$base = 'https://www.iondec.com/api/tools';
+$key  = 'YOUR API KEY';
+
+function api($method, $path, $key, array $fields = [])
+{
+    $ch = curl_init($base . $path);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => $method,
+        CURLOPT_HTTPHEADER     => ['X-Tools-Api-Key: ' . $key],
+    ]);
+    if ($fields) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
+    }
+    $json = json_decode((string) curl_exec($ch), true);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return [$code, $json];
+}
+
+// submit
+[$code, $job] = api('POST', '/encode/', $key, ['file' => new CURLFile('/path/to/project.zip')]);
+$jobId = $job['job_id'];
+
+// poll
+do {
+    [$code, $state] = api('GET', '/job/' . $jobId . '/', $key);
+    sleep(5);
+} while ($state['status'] === 'processing');
+
+// download
+[$code, $result] = api('POST', '/download/' . $jobId . '/', $key);
+file_put_contents($result['file'], base64_decode($result['content_base64']));
