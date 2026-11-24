@@ -1,0 +1,43 @@
+import base64, json, time, urllib.request, uuid
+
+BASE = "https://www.iondec.com/api/tools"
+KEY  = "YOUR API KEY"
+
+def json_call(method, path):
+    req = urllib.request.Request(BASE + path, method=method,
+                                 headers={"X-Tools-Api-Key": KEY})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read().decode())
+
+def upload(path, zip_file, **fields):
+    boundary = "----ToolsApi" + uuid.uuid4().hex
+    parts = []
+    for k, v in fields.items():
+        parts.append(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"" + k + "\"\r\n\r\n" + str(v) + "\r\n").encode())
+    with open(zip_file, "rb") as f:
+        data = f.read()
+    parts.append(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"project.zip\"\r\nContent-Type: application/zip\r\n\r\n").encode())
+    parts.append(data)
+    parts.append(("\r\n--" + boundary + "--\r\n").encode())
+    req = urllib.request.Request(BASE + path, data=b"".join(parts), method="POST",
+                                 headers={"X-Tools-Api-Key": KEY,
+                                          "Content-Type": "multipart/form-data; boundary=" + boundary})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        return json.loads(r.read().decode())
+
+# submit
+result = upload("/encode/", "project.zip", php_version="8.4")
+job = result["job_id"]
+
+# poll
+while True:
+    state = json_call("GET", "/job/" + job + "/")
+    if state["status"] == "ready":
+        break
+    if state["status"] in ("failed", "lost"):
+        raise RuntimeError(state["status"])
+    time.sleep(5)
+
+# download (charges credits)
+result = json_call("POST", "/download/" + job + "/")
+open(result["file"], "wb").write(base64.b64decode(result["content_base64"]))
