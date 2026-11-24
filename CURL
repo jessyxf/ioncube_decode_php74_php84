@@ -1,0 +1,12 @@
+curl -X POST "https://www.iondec.com/api/tools/encode/" \
+  -H "X-Tools-Api-Key: YOUR API KEY" \
+  -F "file=@/path/to/project.zip" \
+  -F "php_version=8.4"
+
+# check status
+curl "https://www.iondec.com/api/tools/job/JOB_ID/" \
+  -H "X-Tools-Api-Key: 93be1400c0d22727209860321faa9b87ed850eb8858a8775f776967393d329f4"
+
+# download (charges credits)
+curl -X POST "https://www.iondec.com/api/tools/download/JOB_ID/" \
+  -H "X-Tools-Api-Key: 93be1400c0d22727209860321faa9b87ed850eb8858a8775f776967393d329f4"
